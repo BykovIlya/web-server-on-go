@@ -5,23 +5,24 @@ import (
 	"html/template"
 	"net/http"
 
+	"db/documents"
 	"github.com/BykovIlya/web-server-on-go/models"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
-	"github.com/russross/blackfriday"
+	"gopkg.in/mgo.v2"
 )
 
-var posts map[string]*models.Post
-var counter int
+var postsCollection *mgo.Collection
 
 func indexHandler(rnd render.Render) {
-	fmt.Println(counter)
-
+	posts := []
+		postsCollection.Find(nil).All(&posts)
 	rnd.HTML(200, "index", posts)
 }
 
 func writeHandler(rnd render.Render) {
-	rnd.HTML(200, "write", nil)
+	post := models.Post{}
+	rnd.HTML(200, "write", post)
 }
 
 func editHandler(rnd render.Render, r *http.Request, params martini.Params) {
@@ -39,7 +40,7 @@ func savePostHandler(rnd render.Render, r *http.Request) {
 	id := r.FormValue("id")
 	title := r.FormValue("title")
 	contentMarkdown := r.FormValue("content")
-	contentHtml := string(blackfriday.MarkdownBasic([]byte(contentMarkdown)))
+	contentHtml := ConvertMarkDownToHtml(contentMarkdown)
 
 	var post *models.Post
 	if id != "" {
@@ -70,9 +71,9 @@ func deleteHandler(rnd render.Render, r *http.Request, params martini.Params) {
 
 func getHtmlHandler(rnd render.Render, r *http.Request) {
 	md := r.FormValue("md")
-	htmlBytes := blackfriday.MarkdownBasic([]byte(md))
+	html := ConvertMarkDownToHtml(md)
 
-	rnd.JSON(200, map[string]interface{}{"html": string(htmlBytes)})
+	rnd.JSON(200, map[string]interface{}{"html": html})
 }
 
 func unescape(x string) interface{} {
@@ -82,8 +83,12 @@ func unescape(x string) interface{} {
 func main() {
 	fmt.Println("Listening on port :8080")
 
-	posts = make(map[string]*models.Post, 0)
-	counter = 0
+	session, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+
+	postsCollection = session.DB("blog").C("posts")
 
 	m := martini.Classic()
 
