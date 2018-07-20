@@ -80,7 +80,7 @@ func unescape(x string) interface{} {
 }
 
 func main() {
-	fmt.Println("Listening on port :3000")
+	fmt.Println("Listening on port :8080")
 
 	posts = make(map[string]*models.Post, 0)
 	counter = 0
@@ -108,5 +108,5 @@ func main() {
 	m.Post("/SavePost", savePostHandler)
 	m.Post("/gethtml", getHtmlHandler)
 
-	m.Run()
+	m.RunOnAddr(":8080")
 }
